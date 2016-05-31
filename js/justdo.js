@@ -1,4 +1,4 @@
-/* global RL_YTX, IM, $, emoji */
+/* global RL_YTX, IM, $, emoji, BMap */
 'use strict';
 /**
  * Created by JKZ on 2015/6/9.
@@ -320,7 +320,7 @@
                     console.log('_privateLogin result:');
                     console.dir(result);
                     var resp = {};
-                    if (result.code !== "000000") {
+                    if (result.code !== '000000') {
                         resp.code = result.code;
                         resp.msg = 'Get SIG fail from 3rd server!...';
                         onError(resp);
@@ -557,7 +557,9 @@
         EV_onCallMsgListener: function(obj) {
             console.log('EV_onCallMsgListener = ');
             console.dir(obj);
+            var im_contact;
             var noticeMsg = '';// 桌面提醒消息
+            var str;
             if (obj.callType === 1) {// 视频
                 if (obj.code === 200) {
                     if (obj.state === 1) {// 收到振铃消息
@@ -579,7 +581,7 @@
                         noticeMsg = '[视频通话结束]';
                     } else if (obj.state === 6) {// 呼叫到达
                         // 添加左侧联系人
-                        var im_contact = $('#im_contact_list').find('li[contact_type="'
+                        im_contact = $('#im_contact_list').find('li[contact_type="'
                             + IM._contact_type_c + '"][contact_you="' + obj.caller
                             + '"]');
                         if (im_contact.length <= 0) {
@@ -602,7 +604,7 @@
                         noticeMsg = '[视频呼叫]';
                     }
                 } else {
-                    var str = '<pre>请求视频通话，请使用其他终端处理</pre>';
+                    str = '<pre>请求视频通话，请使用其他终端处理</pre>';
                     IM.HTML_pushCall_addHTML(obj.caller, obj.callId, str);
                 }
             } else if (obj.callType === 0 || obj.callType === 2) {// 音频
@@ -626,7 +628,7 @@
                         noticeMsg = '[语音通话结束]';
                     } else if (obj.state === 6) {// 呼叫到达
                         // 添加左侧联系人
-                        var im_contact = $('#im_contact_list').find('li[contact_type="'
+                        im_contact = $('#im_contact_list').find('li[contact_type="'
                             + IM._contact_type_c + '"][contact_you="' + obj.caller
                             + '"]');
                         if (im_contact.length <= 0) {
@@ -649,8 +651,8 @@
                         noticeMsg = '[语音呼叫]';
                     }
                 } else {
-                    var str = '<pre>请求语音通话，请使用其他终端处理</pre>';
-                    IM.HTML_pushCall_addHTML( obj.caller, obj.callId, str);
+                    str = '<pre>请求语音通话，请使用其他终端处理</pre>';
+                    IM.HTML_pushCall_addHTML(obj.caller, obj.callId, str);
                 }
             }
 
@@ -730,7 +732,9 @@
             var msgtype = msg.attr('im_msgtype');
             var receiver = msg.attr('content_you');
             var oldMsgid = msg.attr('id').substring(msg.attr('id').indexOf('_') + 1);
-
+            // 查找当前选中的contact_type值 1、IM上传 2、MCM上传
+            var contact_type = msg.attr('content_type');
+            var oFile;
             if (msgtype === 1) {// 文本消息
                 msg.find('span[imtype="resend"]').css('display', 'none');
                 var text = msg.find('pre[msgtype="resendMsg"]').html();
@@ -738,15 +742,13 @@
                         + receiver + ']');
 
                 if (IM._contact_type_m === contact_type) {
-                    IM.EV_sendMcmMsg(oldMsgid, text, content_you, true);
+                    IM.EV_sendMcmMsg(oldMsgid, text, receiver, true);
                 } else {
                     IM.EV_sendTextMsg(oldMsgid, text, receiver, true);
                 }
 
             } else if (msgtype === 4 || msgtype === 7) {
-                // 查找当前选中的contact_type值 1、IM上传 2、MCM上传
-                var contact_type = msg.attr('content_type');
-                var oFile = msg.find('input[imtype="msg_attach_resend"]')[0];
+                oFile = msg.find('input[imtype="msg_attach_resend"]')[0];
                 if (!!oFile) {
                     oFile = oFile.files[0];
                     console.log('resend Attach message: msgtype[' + msgtype
@@ -771,7 +773,7 @@
 
             } else if (msgtype === 2) {// 语音
 
-                var oFile = msg.find('object').val();
+                oFile = msg.find('object').val();
                 if (IM._contact_type_m === contact_type) {
                     IM.EV_sendToDeskAttachMsg(oldMsgid, oFile,
                             msgtype, receiver, true);
@@ -1064,7 +1066,7 @@
                                 + 'padding-top: 10px;padding-bottom: 10px;text-shadow: 0px 0px 0px;color:#eeeeee">退出</span>');
 
             }, function(obj) {
-                if (520015 !== obj.code) {
+                if (obj.code !== 520015) {
                     alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
                 }
             });
@@ -1313,7 +1315,7 @@
 
             RL_YTX.getGroupMemberList(obj, function(obj) {
                 console.log('get Group Member List SUCC...');
-                if ('memberList' === target) {
+                if (target === 'memberList') {
                     console.log('展示群组成员列表');
                     IM.HTML_memberList(obj, startIndex);
                 } else {
@@ -1368,6 +1370,7 @@
                     isNotice);
             RL_YTX.setGroupMessageRule(builder, function() {
                 console.log('set groupNotice suc');
+                var str;
                 // 切换btn样式
                 if (isNotice === 2) {
                     str = '<a href="javascript:void(0);" class="btn btn-primary" style="margin-left:10px;" >开启</a>'
@@ -1468,10 +1471,12 @@
 
             RL_YTX.confirmJoinGroup(obj, function() {
                 var str = '';
-                if (1 === confirm)
+                if (confirm === 1) {
                     str = '{已拒绝}';
-                if (2 === confirm)
+                }
+                if (confirm === 2) {
                     str = '{已同意}';
+                }
                 $(document.getElementById(you_sender + '_' + version)).find('span[imtype="notice"]').html(str);
             }, function(obj) {
                 alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
@@ -1500,13 +1505,15 @@
 
             RL_YTX.confirmInviteJoinGroup(obj, function() {
                 var str = '';
-                if (1 === confirm)
+                if (confirm === 1) {
                     str = '{已拒绝}';
-                if (2 === confirm)
+                }
+                if (confirm === 2) {
                     str = '{已同意}';
+                }
                 $(document.getElementById(you_sender + '_' + version)).find('span[imtype="notice"]').html(str);
 
-                if (2 === confirm) {
+                if (confirm === 2) {
                             // 在群组列表中添加群组项
                     var current_contact_type = IM.HTML_find_contact_type();
                     var isShow = false;
@@ -1539,7 +1546,7 @@
                 var trobj = $('#pop').find('tr[contact_you="' + memberId + '"]');
                 var tdobj = trobj.children();
                 var spanobj = tdobj.children();
-                var deleobj = spanobj[1];
+                // var deleobj = spanobj[1];
                 var speakobj = spanobj[2];
                 $(speakobj).remove();
                 console.log('修改成员禁言状态成功');
@@ -1680,12 +1687,12 @@
                 isFireMsg = true;
             }
 
-            var b_isGroupMsg = ('g' === obj.msgReceiver.substr(0, 1));
+            var b_isGroupMsg = obj.msgReceiver.substr(0, 1) === 'g';
             // zyh var you_sender = (b_isGroupMsg) ? obj.msgReceiver : obj.msgSender;
             var inforSender = obj.msgSender;
             var name = obj.senderNickName || obj.msgSender;
             var you_sender = obj.msgSender;
-            if (obj.msgSender !== obj.msgReceiver & obj.msgReceiver !== IM._user_account) {
+            if (obj.msgSender !== obj.msgReceiver && obj.msgReceiver !== IM._user_account) {
                 name = obj.msgReceiver;
                 you_sender = obj.msgReceiver;
             }
@@ -1698,8 +1705,8 @@
             var content_type = null;
             // var version = obj.version;// 改版
             var version = obj.msgId;
-            var time = obj.msgDateCreated;
-            if (0 === obj.mcmEvent) {// 0普通im消息
+            // var time = obj.msgDateCreated;
+            if (obj.mcmEvent === 0) {// 0普通im消息
                 // 点对点消息，或群组消息
                 content_type = (b_isGroupMsg)
                         ? IM._contact_type_g
@@ -1708,7 +1715,7 @@
                 var str = '';
 
                 // 消息类型1:文本消息 2：语音消息 3：视频消息 4：图片消息 5：位置消息 6：文件
-                if (1 === msgType) {
+                if (msgType === 1) {
 
                     str = emoji.replace_unified(you_msgContent);
 
@@ -1718,10 +1725,10 @@
                         str = '<pre>' + str + '</pre>';
                     }
 
-                } else if (2 === msgType) {
+                } else if (msgType === 2) {
                     // 判断是否支持支持audio标签
                     str = '<pre>您有一条语音消息,请用其他设备接收</pre>';
-                /*
+                    /*
                       var url = obj.msgFileUrl;
                       // str = '你接收了一条语音消息['+ url +']';
                       if(isFireMsg){
@@ -1733,7 +1740,7 @@
                       }
                     */
 
-                } else if (3 === msgType) {// 3：视频消息
+                } else if (msgType === 3) {// 3：视频消息
 
                     var urlShow = obj.msgFileUrlThum;// 小视频消息的缩略图地址
                     var urlReal = obj.msgFileUrl;
@@ -1770,7 +1777,7 @@
                             + '<span style="font-size: small;margin-left:15px;">' + size + '</span></div>';
                     }
 
-                } else if (4 === msgType) {// 4：图片消息
+                } else if (msgType === 4) {// 4：图片消息
                     var url = obj.msgFileUrl;
                     var windowWid = $(window).width();
                     var imgWid = 0;
@@ -1782,7 +1789,7 @@
                         imgWid = 150;
                         imgHei = 200;
                     }// zyh
-                    if (isFireMsg & inforSender !== IM._user_account) {
+                    if (isFireMsg && inforSender !== IM._user_account) {
                         var str = '<img fireMsg="yes" src="' + url + '" style="cursor:pointer;max-width:'
                             + imgWid + 'px; max-height:' + imgHei
                             + 'px;display:none" onclick="IM.DO_pop_phone(\'' + you_sender
@@ -1794,9 +1801,9 @@
                             + '\', \'' + version + '\')"/>';
                     }
 
-                } else if (5 === msgType) {// 位置消息
+                } else if (msgType === 5) {// 位置消息
                     // str = '你接收了一条位置消息...';
-                    var jsonObj = eval('(' + you_msgContent + ')');
+                    var jsonObj = JSON.parse(you_msgContent);
                     var lat = jsonObj.lat; // 纬度
                     var lon = jsonObj.lon; // 经度
                     var title = jsonObj.title; // 位置信息描述
@@ -1816,55 +1823,53 @@
                     + '\', \'' + lon + '\', \'' + title + '\')"/>';
 
 
-                } else if (6 === msgType) {// 压缩文件  仅支持火狐和谷歌浏览器
-                    var url = obj.msgFileUrl;
-                    var num = obj.msgFileSize;
-                    var size = 0;
-                    if (num < 1024) {
-                        size = num + 'byte';
-                    } else if (num / 1024 >= 1 && num / Math.pow(1024, 2) < 1) {
-                        size = Number(num / 1024).toFixed(2) + 'KB';
-                    } else if (num / Math.pow(1024, 2) >= 1 && num / Math.pow(1024, 3) < 1) {
-                        size = Number(num / Math.pow(1024, 2)).toFixed(2) + 'MB';
-                    } else if (num / Math.pow(1024, 3) >= 1 && num / Math.pow(1024, 4) < 1) {
-                        size = Number(num / Math.pow(1024, 3)).toFixed(2) + 'G';
-                    }
+                } else if (msgType === 6) {// 压缩文件  仅支持火狐和谷歌浏览器
+                    // var url = obj.msgFileUrl;
+                    // var num = obj.msgFileSize;
+                    // var size = 0;
+                    // if (num < 1024) {
+                    //     size = num + 'byte';
+                    // } else if (num / 1024 >= 1 && num / Math.pow(1024, 2) < 1) {
+                    //     size = Number(num / 1024).toFixed(2) + 'KB';
+                    // } else if (num / Math.pow(1024, 2) >= 1 && num / Math.pow(1024, 3) < 1) {
+                    //     size = Number(num / Math.pow(1024, 2)).toFixed(2) + 'MB';
+                    // } else if (num / Math.pow(1024, 3) >= 1 && num / Math.pow(1024, 4) < 1) {
+                    //     size = Number(num / Math.pow(1024, 3)).toFixed(2) + 'G';
+                    // }
 
-                    var zipedFileName = obj.msgFileName;
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('GET', url, true);
-                    xhr.responseType = 'blob';
-                    xhr.onload = function(e) {
-                        if (this.status === 200) {
-                            var blob = this.response;
-                            blob.name = fileName;
-                            model.getEntries(blob, function(entries) {
-
-                                entries.forEach(function(entry) {
-                                    model.getEntryFile(entry, 'Blob', function(blobURL) {
-                                        var fileName = entry.filename;
-                                        fileName = zipedFileName.substring(0, zipedFileName.lastIndexOf('.')) + fileName.substring(fileName.lastIndexOf('.'));
-                                        if (isFireMsg) {
-                                            str = '<div style="display:inline"><a fireMsg="yes" href="' + blobURL + '" download="' + entry.filename + '" target="_blank">'
-                                                + '<span>'
-                                                + '<img style="width:32px; height:32px; margin-right:5px; margin-left:5px;" src="assets/img/attachment_icon.png" />'
-                                                + '</span>' + '<span>' + fileName + '</span>' // + '<span style="font-size: small;margin-left:15px;">'+size+'</span>'
-                                                + '</a>' + '<span style="font-size: small;margin-left:15px;">' + size + '</span></div>';
-                                        } else {
-                                            str = '<div style="display:inline"><a href="' + blobURL + '" download="' + entry.filename + '" target="_blank">'
-                                                + '<span>'
-                                                + '<img style="width:32px; height:32px; margin-right:5px; margin-left:5px;" src="assets/img/attachment_icon.png" />'
-                                                + '</span>' + '<span>' + fileName + '</span>' // + '<span style="font-size: small;margin-left:15px;">'+size+'</span>'
-                                                + '</a>' + '<span style="font-size: small;margin-left:15px;">' + size + '</span></div>';
-                                        }
-                                    }, function(current, total) {
-                                    });
-                                });
-                            });
-                        }
-                    };
-                    xhr.send();
-                } else if (7 === msgType) {// 非压缩文件
+                    // var zipedFileName = obj.msgFileName;
+                    // var xhr = new XMLHttpRequest();
+                    // xhr.open('GET', url, true);
+                    // xhr.responseType = 'blob';
+                    // xhr.onload = function(/* e */) {
+                    //     if (this.status === 200) {
+                    //         var blob = this.response;
+                    //         model.getEntries(blob, function(entries) {
+                    //             entries.forEach(function(entry) {
+                    //                 model.getEntryFile(entry, 'Blob', function(blobURL) {
+                    //                     var fileName = entry.filename;
+                    //                     fileName = zipedFileName.substring(0, zipedFileName.lastIndexOf('.')) + fileName.substring(fileName.lastIndexOf('.'));
+                    //                     if (isFireMsg) {
+                    //                         str = '<div style="display:inline"><a fireMsg="yes" href="' + blobURL + '" download="' + fileName + '" target="_blank">'
+                    //                             + '<span>'
+                    //                             + '<img style="width:32px; height:32px; margin-right:5px; margin-left:5px;" src="assets/img/attachment_icon.png" />'
+                    //                             + '</span>' + '<span>' + fileName + '</span>' // + '<span style="font-size: small;margin-left:15px;">'+size+'</span>'
+                    //                             + '</a>' + '<span style="font-size: small;margin-left:15px;">' + size + '</span></div>';
+                    //                     } else {
+                    //                         str = '<div style="display:inline"><a href="' + blobURL + '" download="' + fileName + '" target="_blank">'
+                    //                             + '<span>'
+                    //                             + '<img style="width:32px; height:32px; margin-right:5px; margin-left:5px;" src="assets/img/attachment_icon.png" />'
+                    //                             + '</span>' + '<span>' + fileName + '</span>' // + '<span style="font-size: small;margin-left:15px;">'+size+'</span>'
+                    //                             + '</a>' + '<span style="font-size: small;margin-left:15px;">' + size + '</span></div>';
+                    //                     }
+                    //                 }, function(current, total) {
+                    //                 });
+                    //             });
+                    //         });
+                    //     }
+                    // };
+                    // xhr.send();
+                } else if (msgType === 7) {// 非压缩文件
                     var url = obj.msgFileUrl;
                     var num = obj.msgFileSize;
                     var size = 0;
@@ -1901,27 +1906,25 @@
                 // 桌面提醒通知
                 IM.DO_deskNotice(you_sender, name, you_msgContent, msgType, isFireMsg, false);
 
-            } else if (1 === obj.mcmEvent) {// 1 start消息
+            } else if (obj.mcmEvent === 1) {// 1 start消息
                 IM.HTML_pushMsg_addHTML(obj.msgType, you_sender, version,
                         IM._contact_type_m, b_current_contact_you, name,
                         you_msgContent);
-            } else if (2 === obj.mcmEvent) {// 2 end消息
+            } else if (obj.mcmEvent === 2) {// 2 end消息
                 IM.HTML_pushMsg_addHTML(obj.msgType, you_sender, version,
                                 IM._contact_type_m, b_current_contact_you,
                                 name, '结束咨询');
-            } else if (3 === obj.mcmEvent) {// 3发送mcm消息
+            } else if (obj.mcmEvent === 3) {// 3发送mcm消息
                 IM.HTML_pushMsg_addHTML(obj.msgType, you_sender, version,
                         IM._contact_type_m, b_current_contact_you, name,
                         you_msgContent);
-            } else if (53 === obj.mcmEvent) {// 3发送mcm消息
-
+            } else if (obj.mcmEvent === 3) {// 3发送mcm消息
                 content_type = IM._contact_type_m;
                 var msgType = obj.msgType;
                 var str = '';
 
                 // 消息类型1:文本消息 2：语音消息 3：视频消息 4：图片消息 5：位置消息 6：文件
-                if (1 === msgType) {
-                    msgType = 1;
+                if (msgType === 1) {
                     str = emoji.replace_unified(you_msgContent);
                     if (isFireMsg) {
                         str = '<pre fireMsg="yes">' + str + '</pre>';
@@ -1929,7 +1932,7 @@
                         str = '<pre>' + str + '</pre>';
                     }
 
-                } else if (2 === msgType) {
+                } else if (msgType === 2) {
                     var url = obj.msgFileUrl;
                     if (isFireMsg) {
                         str = '<audio fireMsg="yes" style="display:none" controls="controls" src="' + url
@@ -1938,7 +1941,7 @@
                         str = '<audio controls="controls" src="' + url
                             + '">your browser does not surpport the audio element</audio>';
                     }
-                } else if (3 === msgType) {// 3：视频消息
+                } else if (msgType === 3) {// 3：视频消息
                     var urlShow = obj.msgFileUrlThum;// 小视频消息的缩略图地址
                     var urlReal = obj.msgFileUrl;
                     var windowWid = $(window).width();
@@ -1960,7 +1963,7 @@
                             + version + '\')" videourl="' + urlReal + '" src="' + urlShow + '" style="max-width:'
                             + imgWid + 'px;max-height:' + imgHei + 'px;" />';
                     }
-                } else if (4 === msgType) {// 4：图片消息
+                } else if (msgType === 4) {// 4：图片消息
 
                     var url = obj.msgFileUrl;
                     var windowWid = $(window).width();
@@ -1984,9 +1987,9 @@
                             + 'px;" onclick="IM.DO_pop_phone(\'' + you_sender
                             + '\', \'' + version + '\')"/>';
                     }
-                } else if (5 === msgType) {// 位置消息
+                } else if (msgType === 5) {// 位置消息
                     str = '你接收了一条位置消息...';
-                } else if (6 === msgType || 7 === msgType) {// 统一按非压缩处理的
+                } else if (msgType === 6 || msgType === 7) {// 统一按非压缩处理的
                     var url = obj.msgFileUrl;
                     var num = obj.msgFileSize;
                     var size = 0;
@@ -2016,7 +2019,7 @@
                 }
 
                 IM.HTML_pushMsg_addHTML(msgType, you_sender, version,
-                        content_type, b_current_contact_you, name, str);
+                    content_type, b_current_contact_you, name, str);
             }
         },
 
@@ -2028,9 +2031,9 @@
             if (msgtype === 2) {// 录音
                 var dom = document.getElementById(id).getElementsByTagName('audio')[0];
                 dom.play();
-                /*避免因为卡顿引起的异常：例如，本来需要5秒播放完成，
-                但是由于卡顿播放了7秒，这时会导致语音文件还没播放完成就销毁的情况
-                解决方式：播放长度 + 3 */
+                // 避免因为卡顿引起的异常：例如，本来需要5秒播放完成，
+                // 但是由于卡顿播放了7秒，这时会导致语音文件还没播放完成就销毁的情况
+                // 解决方式：播放长度 + 3
                 play_time = Math.ceil(dom.duration) + 1;
             }
             $($(document.getElementById(id)).children()[2]).hide();
@@ -2040,6 +2043,7 @@
             timerStr += '<span class="pull-right">倒计时<code id="fireMsgtimer' + id + '">' + play_time + '</code>秒</span>';
             $(document.getElementById(id)).prepend(timerStr);
             var timerTab = document.getElementById('fireMsgtimer' + id);
+            var num;
             function fireMsgTimer() {
                 if (((timerTab.innerHTML * 1 - 1) + '').length > 1) {
                     timerTab.innerHTML = '' + timerTab.innerHTML * 1 - 1;
@@ -2052,11 +2056,11 @@
                     return false;
                 }
             }
-            var num = window.setInterval(fireMsgTimer, 1000);
+            num = window.setInterval(fireMsgTimer, 1000);
             var msgid = id.substring(id.indexOf('_') + 1);
             var deleteReadMsgBuilder = new RL_YTX.DeleteReadMsgBuilder();
             deleteReadMsgBuilder.setMsgid(msgid);
-            RL_YTX.deleteReadMsg(deleteReadMsgBuilder, function(obj) {
+            RL_YTX.deleteReadMsg(deleteReadMsgBuilder, function(/* obj */) {
                 console.log('阅后即焚消息通知主叫侧成功');
             }, function(obj) {
                 alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
@@ -2098,7 +2102,7 @@
          * lon 经度
          * title 位置信息描述
          */
-        DO_show_map: function(lat, lon, title ) {
+        DO_show_map: function(lat, lon, title) {
             $('#im_body').append('<div id=\'baiduMap\' style=\'z-index:888899; margin-left: 10%;margin-right:10%; height: 550px; width: 80%;\'></div>');
             $('#carousels').empty();
             var map = new BMap.Map('baiduMap'); // 创建地图实例
@@ -2106,10 +2110,11 @@
             var marker = new BMap.Marker(point);        // 创建标注
             map.addOverlay(marker);
             map.centerAndZoom(point, 15);
-            var opts = {width: 200,
-                     height: 100,
-                     enableMessage:true// 设置允许信息窗发送短息
-                    };
+            var opts = {
+                width: 200,
+                height: 100,
+                enableMessage: true // 设置允许信息窗发送短息
+            };
             var infoWindow = new BMap.InfoWindow(title, opts);  // 创建信息窗口对象
             marker.addEventListener('click', function() {
                 map.openInfoWindow(infoWindow, point); // 开启信息窗口
@@ -2169,8 +2174,6 @@
                 $('#carousels').find('img').css('max-height', (showHei - 30) + 'px').css(
                     'max-width', ($(window).width() - 50) + 'px');
             }
-            var q = 1;
-
         },
 
         /**
@@ -2186,14 +2189,13 @@
             }
 
             var index = -1;
-            msg.parent().find('div[msg="msg"][im_carousel="real"]:visible').each(
-                    function() {
-                        index++;
-                        if (IM._msgId === $(this).attr('id')) {
-                            index++;
-                            return false;
-                        }
-                    });
+            msg.parent().find('div[msg="msg"][im_carousel="real"]:visible').each(function() {
+                index++;
+                if (IM._msgId === $(this).attr('id')) {
+                    index++;
+                    return false;
+                }
+            });
             if (index < 0) {
                 return;
             }
@@ -2201,6 +2203,7 @@
             if (nextMsg.length < 1) {
                 return;
             }
+            var str = '';
             var showHei = $('#lvjing').height() - 50;// 客户端竖屏视频需要拖动滚动条才能露出控制按钮，所以减去50px
             if (nextMsg.attr('im_msgtype') === 4) {
                 var src = nextMsg.find('img').attr('src');
@@ -2219,7 +2222,6 @@
                 $('#carousels').find('img').css('max-height', (showHei - 30) + 'px').css(
                     'max-width', ($(window).width() - 50) + 'px');
             }
-
         },
 
         /**
@@ -2245,7 +2247,7 @@
             // 9邀请加入群组的用户因本身群组个数超限加入失败(只发送给邀请者)10管理员修改群组信息，11用户修改群组成员名片12新增管理员变更通知)
             var auditType = obj.auditType;
             var groupTarget = (obj.target === 2) ? '群组' : '讨论组';
-            if (1 === auditType) {
+            if (auditType === 1) {
                 you_msgContent = '['
                         + people
                         + ']申请加入' + groupTarget + '['
@@ -2266,8 +2268,8 @@
                         + ']申请加入' + groupTarget + '['
                         + groupName
                         + '] ';
-            } else if (2 === auditType) {
-                if (1 === obj.confirm) {
+            } else if (auditType === 2) {
+                if (obj.confirm === 1) {
                     you_msgContent = '[' + groupName + ']管理员邀请您加入' + groupTarget;
                     noticeContent = you_msgContent;
                     // 在群组列表中添加群组项
@@ -2300,21 +2302,21 @@
                             + groupName
                             + ']管理员邀请您加入群组;';
                 }
-            } else if (3 === auditType) {
+            } else if (auditType === 3) {
                 you_msgContent = '[' + people + ']直接加入群组[' + groupName + ']';
                 noticeContent = you_msgContent;
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
-            } else if (4 === auditType) {
+            } else if (auditType === 4) {
                 you_msgContent = '管理员解散了群组[' + groupName + ']';
                 noticeContent = you_msgContent;
                 // 将群组从列表中移除
                 IM.HTML_remove_contact(groupId);
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
-            } else if (5 === auditType) {
+            } else if (auditType === 5) {
                 you_msgContent = '[' + people + ']退出了' + groupTarget + '[' + groupName + ']';
                 noticeContent = you_msgContent;
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
-            } else if (6 === auditType) {
+            } else if (auditType === 6) {
                 you_msgContent = '[' + groupName + ']管理员将[' + people + ']踢出' + groupTarget;
                 noticeContent = you_msgContent;
                 // 将群组从列表中移除
@@ -2322,13 +2324,13 @@
                     IM.HTML_remove_contact(groupId);
                 }
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
-            } else if (7 === auditType) {
+            } else if (auditType === 7) {
                 you_msgContent = '管理员同意[' + people + ']加入群组[' + groupName
                         + ']的申请';
                 noticeContent = you_msgContent;
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
-            } else if (8 === auditType) {
-                if (2 !== obj.confirm) {
+            } else if (auditType === 8) {
+                if (obj.confirm !== 2) {
                     you_msgContent = '[' + people + ']拒绝了群组[' + groupName
                             + ']的邀请';
                     noticeContent = you_msgContent;
@@ -2339,7 +2341,7 @@
                     IM.DO_procesGroupNotice(auditType, groupId, peopleId,
                             people);
                 }
-            } else if (10 === auditType) {
+            } else if (auditType === 10) {
 
                 people = (!!obj.adminName) ? obj.adminName : obj.admin;
                 if (obj.target === 2) {
@@ -2356,13 +2358,13 @@
                 }
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people,
                         obj.groupName, obj.ext);
-            } else if (11 === auditType) {
+            } else if (auditType === 11) {
                 you_msgContent = '用户[' + people + ']修改群组成员名片';
                 noticeContent = you_msgContent;
                 // TODO obj.memberName有值，意味着要修改展示的名字
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId,
                         obj.memberName, obj.groupName, obj.ext);
-            } else if (12 === auditType) {
+            } else if (auditType === 12) {
                 you_msgContent = '用户[' + people + ']成为' + groupTarget + '[' + groupName + ']管理员';
                 noticeContent = you_msgContent;
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId,
@@ -2375,11 +2377,11 @@
             // 添加左侧消息
             // 监听消息的联系人，是否是当前展示的联系人
             var b_current_contact_you = IM.DO_createMsgDiv_Help(you_sender,
-                    name, true);
+                name, true);
 
             // 添加右侧消息zyh
             IM.HTML_pushMsg_addHTML(1, you_sender, version, IM._contact_type_g,
-                    b_current_contact_you, groupName, you_msgContent);
+                b_current_contact_you, groupName, you_msgContent);
             // 桌面提醒通知
             IM.DO_deskNotice('', '', noticeContent, '', false, false);
         },
@@ -2429,9 +2431,9 @@
                 if (!!groupName) {
                     IM.HTML_showGroupName(isowner, groupName);
                 }
-                if (!!ext) {
-                    var json = eval('(' + ext + ')');
-                    if (!!json['groupDeclared']) {
+                if (ext) {
+                    var json = JSON.parse(ext);
+                    if (json['groupDeclared']) {
                         IM.HTML_showGroupDeclared(isowner,
                                 json['groupDeclared']);
                     }
@@ -2612,7 +2614,7 @@
             var current_contact = $(document.getElementById('im_contact_' + you_sender));
             if (!current_contact.hasClass('active')) {
                 var warn = current_contact.find('span[contact_style_type="warn"]');
-                if ('99+' === warn.html()) {
+                if (warn.html() === '99+') {
                     return;
                 }
                 var warnNum = parseInt((!!warn.html()) ? warn.html() : 0) + 1;
@@ -2624,7 +2626,7 @@
                 warn.show();
             }
         },
-        HTML_pushCall_addHTML: function( you_sender, callId, you_msgContent) {
+        HTML_pushCall_addHTML: function(you_sender, callId, you_msgContent) {
             // push消息的联系人，是否是当前展示的联系人
             var b = IM.DO_createMsgDiv_Help(you_sender, you_sender, false);
             var str = '<div msg="msg" id="' + you_sender + '_' + callId
@@ -2644,7 +2646,7 @@
             var current_contact = $(document.getElementById('im_contact_' + you_sender));
             if (!current_contact.hasClass('active')) {
                 var warn = current_contact.find('span[contact_style_type="warn"]');
-                if ('99+' === warn.html()) {
+                if (warn.html() === '99+') {
                     return;
                 }
                 var warnNum = parseInt((!!warn.html()) ? warn.html() : 0) + 1;
@@ -2679,7 +2681,7 @@
             var current_contact = $(document.getElementById('im_contact_' + you_sender));
             if (!current_contact.hasClass('active')) {
                 var warn = current_contact.find('span[contact_style_type="warn"]');
-                if ('99+' === warn.html()) {
+                if (warn.html() === '99+') {
                     return;
                 }
                 var warnNum = parseInt((!!warn.html()) ? warn.html() : 0) + 1;
@@ -2715,7 +2717,7 @@
 
             im_send_content = emoji.replace_unified(im_send_content);
 
-            var display = ('temp_msg' === msg) ? 'none' : 'block';
+            var display = msg === 'temp_msg' ? 'none' : 'block';
             var carou = '';
             if (msgtype === 4 || msgtype === 3) {
                 carou = 'real';
@@ -2750,7 +2752,7 @@
                 im_send_content = emoji.replace_unified(im_send_content);
             }
 
-            var display = ('temp_msg' === msg) ? 'none' : 'block';
+            var display = msg === 'temp_msg' ? 'none' : 'block';
             var carou = '';
             if (msgtype === 4 || msgtype === 3) {
                 carou = 'real';
@@ -2845,9 +2847,8 @@
                     alert('错误码：' + obj.state + '; 错误描述：获得用户状态结果不合法');
                 }
             }, function(obj) {
-                if (174006 !== obj.code) {
+                if (obj.code !== 174006) {
                     alert('错误码：' + obj.code + '; 错误描述：' + obj.msg);
-
                 }
             });
         },
@@ -2926,7 +2927,7 @@
                 IM.HTML_showAlert('alert-error', '联系人长度不能超过128');
                 return false;
             }
-            if ('g' === contactVal.substr(0, 1)) {
+            if (contactVal.substr(0, 1) === 'g') {
                 IM.HTML_showAlert('alert-error', '联系人不能以"g"开始');
                 return false;
             }
@@ -3028,11 +3029,13 @@
                 }
             }
             var active = '';
-            if (b)
+            if (b) {
                 active = 'active';
+            }
             var dis = 'none';
-            if (bb)
+            if (bb) {
                 dis = 'block';
+            }
 
             var str = '<li onclick="IM.DO_chooseContactList(\'' + content_type
                     + '\', \'' + contactVal + '\')" id="im_contact_'
@@ -3065,8 +3068,9 @@
             if (conListWidth - ulWidth > 30) {
                 $('#im_contact_list').find('li')[0].style.width = conListWidth + 45 + 'px';// 防止用户名过长时用户状态或消息条数换行
             }
-            if (b)
+            if (b) {
                 IM.DO_chooseContactList(content_type, contactVal);
+            }
         },
 
         /**
@@ -3265,7 +3269,7 @@
 
             city.length = 0;
             // 将城市数组中的值填充到城市下拉框中
-            for (var i = 0;i < cityArr.length;i++) {
+            for (var i = 0; i < cityArr.length; i++) {
                 city[i] = new Option(cityArr[i], cityArr[i]);
             }
         },
@@ -3494,15 +3498,15 @@
             modifyMemberCardBuilder.setMember(memberId);
             modifyMemberCardBuilder.setBelong(belong);
             modifyMemberCardBuilder.setDisplay(nick);
-            RL_YTX.modifyMemberCard(modifyMemberCardBuilder, function(obj) {// member belong
+            RL_YTX.modifyMemberCard(modifyMemberCardBuilder, function(/* obj */) {// member belong
                 console.log('修改群组成员名片成功！');
-            }, function(obj) {
+            }, function(/* obj */) {
                 console.log('修改群组成员名片失败！');
             });
         },
         DO_checkNick: function(obj) {
             var nick = $(obj).val();
-            if ('' === nick.trim()) {
+            if (nick.trim() === '') {
                 $(obj).prev().show();
                 $(obj).hide();
                 return;
@@ -3745,7 +3749,7 @@
          * @param id
          */
         HTML_closeAlert: function(id) {
-            if ('all' === id) {
+            if (id === 'all') {
                 IM.HTML_closeAlert('alert-error');
                 IM.HTML_closeAlert('alert-info');
                 IM.HTML_closeAlert('alert-warning');
@@ -3819,13 +3823,14 @@
             $('#im_content_list').scrollTop($('#im_content_list')[0].scrollHeight);
 
             // 绘制滤镜
-            if ('block' === $('#pop_photo').css('display')) {
+            if ($('#pop_photo').css('display') === 'block') {
                 IM.HTML_pop_photo_show();
-            } else if ('block' === $('#pop').css('display')) {
+            } else if ($('#pop').css('display') === 'block') {
                 IM.HTML_pop_show();
-            } else if ('block' === $('#lvjing').find('img').css('display')) {
+            } else if ($('#lvjing').find('img').css('display') === 'block') {
                 IM.HTML_LJ('black');
-            } else if ('block' === $('#pop_takePicture').css('display')) {
+            } else if ($('#pop_takePicture').css('display') === 'block') {
+                console.log('');
             } else {
                 IM.HTML_LJ('black');
             }
@@ -3853,12 +3858,13 @@
             var navbarHei = $('#navbar').height();
             var concentHei = ($('#hero-unit').height() + 20 + 60 + 30);
             var concentwid = ($('#hero-unit').width()
-                    + parseInt($('#hero-unit').css('padding-left')) + parseInt($('#hero-unit')
-                    .css('padding-right')));
+                + parseInt($('#hero-unit').css('padding-left')) + parseInt($('#hero-unit')
+                .css('padding-right')));
 
             var lvjingImgHei = lvjing.find('img').height();
-            if (0 === lvjingImgHei)
+            if (lvjingImgHei === 0) {
                 lvjingImgHei = 198;
+            }
 
             lvjing.css('top', navbarHei);
             lvjing.css('left', 0);
@@ -3883,13 +3889,13 @@
             context.lineTo(0, concentHei + 15);
             context.closePath();
             context.globalAlpha = 0.4;
-            if ('white' === style) {
+            if (style === 'white') {
                 context.fillStyle = 'rgb(200,200,200)';
                 lvjing.find('img').hide();
-            } else if ('photo' === style) {
+            } else if (style === 'photo') {
                 context.fillStyle = 'rgb(20,20,20)';
                 lvjing.find('img').hide();
-            } else if ('black' === style) {
+            } else if (style === 'black') {
                 context.fillStyle = 'rgb(0,0,0)';
                 var qr = lvjing.find('img');
                 qr.css('top', concentHei / 2 - lvjingImgHei / 2);
@@ -3899,16 +3905,16 @@
             context.fill();
             context.stroke();
 
-            var cha = navbarHei + 4;
-            if (navbarHei > 45)
-                cha = 0;
+            // var cha = navbarHei + 4;
+            // if (navbarHei > 45) {
+            //     cha = 0;
+            // }
             $('#im_body').height(navbarHei + concentHei - 25);
             $('body').height(navbarHei + concentHei - 25);
 
             setTimeout(function() {
                 $('#ClCache').parent().remove();
             }, 20);
-
         },
 
         /**
@@ -3979,8 +3985,6 @@
                 im_add.find('input[imtype="im_add_mcm"]').show();
                 im_add.find('button[imtype="im_add_btn_contact"]').hide();
                 im_add.find('div[imtype="im_add_btn_group"]').hide();
-            } else {
-
             }
         },
         /**
@@ -3992,12 +3996,12 @@
             var num = obj.length;
             $('#groupMemList_div').css('top', (20 - (num - 1) * 30) + 'px');
 
-            for (var i = 0;i < obj.length;i++) {
+            for (var i = 0; i < obj.length; i++) {
                 var member = obj[i].member;// 账号  nickName 昵称
                 console.log('member = ' + member + ';nickName=' + obj[i].nickName);
                 $('#groupMemList_div').show();
                 var str = '';
-                if ('' !== obj[i].nickName && IM._user_account !== member) {
+                if (obj[i].nickName !== '' && IM._user_account !== member) {
                     str += '<div id="' + member + '" onclick="IM._selectGroupMem(this,\'' + startIndex + '\')" '
                         + 'onmousemove="IM._mouseoverStyle(this)" onmouseout="IM._mouseoutStyle(this)">'
                         + obj[i].nickName + '</div>';
@@ -4020,7 +4024,7 @@
             $(obj).css('background-color', '');
         },
         _selectGroupMem: function(obj, startIndex) {
-            var member = $(obj).attr('id');
+            // var member = $(obj).attr('id');
             var nickName = $(obj).text();
             if (startIndex === '') {
                 $('#im_send_content').append(nickName);
@@ -4078,9 +4082,9 @@
                 return;
             }
 
-            if (im_send_content === undefined || im_send_content == null
-                    || im_send_content === '')
+            if (im_send_content === undefined || im_send_content == null || im_send_content === '') {
                 return;
+            }
             im_send_content = im_send_content.replace(/&lt;/g, '<').replace(
                     /&gt;/g, '>').replace(/&quot;/g, '"')
                     .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
@@ -4270,7 +4274,7 @@
                 msg.find('a[imtype="msg_attach_href"]').next().html(size);
                 msgType = 7;
             } else {
-                if ('image' === oFile.type.substring(0, oFile.type.indexOf('/'))) {
+                if (oFile.type.substring(0, oFile.type.indexOf('/')) === 'image') {
                     var windowWid = $(window).width();
                     var imgWid = 0;
                     var imgHei = 0;
@@ -4342,8 +4346,8 @@
                 }
             });
 
-            $('#im_send_content').find('div').each(function(i) {
-                if ('<br>' === $(this).html()) {
+            $('#im_send_content').find('div').each(function() {
+                if ($(this).html() === '<br>') {
                     $(this).replaceWith('<br>');
                 } else {
                     $(this).replaceWith('<br>' + $(this).html());
@@ -4352,11 +4356,11 @@
 
             var im_send_content = $('#im_send_content').html();
 
-            if ('<br>' === im_send_content) {
+            if (im_send_content === '<br>') {
                 im_send_content = '';
             } else {
                 im_send_content = im_send_content.replace(/(<(br)[/]?>)+/g,
-                        '\u000A');
+                    '\u000A');
             }
 
             $('#im_send_content').html(im_send_content + content_emoji);
@@ -4375,10 +4379,12 @@
             str = str.replace(/<(div|br|p)[/]?>/g, '\u000A');
             str = str.replace(/\u000A+/g, '\u000D');
             str = str.replace(/<[^img][^>]+>/g, '');// 去掉所有的html标记
-            str = str.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(
-                    /&quot;/g, '"').replace(/&amp;/g, '&').replace(/&nbsp;/g,
-                    ' ');
-            if ('\u000D' === str) {
+            str = str.replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, '&')
+                .replace(/&nbsp;/g, ' ');
+            if (str === '\u000D') {
                 str = '';
             }
             return str;
@@ -4390,7 +4396,7 @@
          * @constructor
          */
         HTML_showOrHideEmojiDiv: function() {
-            if ('none' === $('#emoji_div').css('display')) {
+            if ($('#emoji_div').css('display') === 'none') {
                 $('#emoji_div').show();
             } else {
                 $('#emoji_div').hide();
@@ -4509,7 +4515,7 @@
                 }
 
             }, function(obj) {
-                if (520015 !== obj.code) {
+                if (obj.code !== 520015) {
                     alert('错误码：' + obj.code + '; 错误描述：' + obj.msg);
                 }
             });
@@ -4524,7 +4530,7 @@
             if (nickName !== IM._user_account) {
                 if (nickName.length > 6) {
                     alert('昵称长度不能超过6');
-                    return ;
+                    return;
                 }
             }
 
@@ -4541,18 +4547,18 @@
                 return;
             }
             var uploadPersonInfoBuilder = new RL_YTX.UploadPersonInfoBuilder(
-                    nickName, sex, birth, sign);
+                nickName, sex, birth, sign);
 
-            RL_YTX.uploadPerfonInfo(uploadPersonInfoBuilder, function(obj) {
+            RL_YTX.uploadPerfonInfo(uploadPersonInfoBuilder, function(/* obj */) {
                 IM.HTML_pop_hide();
                 $('#navbar_login_show').find('span')[1].innerHTML = nickName;
                 $('#navbar_login_show').html('<span style="float: left;display: block;font-size: 20px;font-weight: 200;padding-top: 10px;padding-bottom: 10px;text-shadow: 0px 0px 0px;color:#eee" >您好:</span>'
-                                + '<a onclick="IM.DO_userMenu()" style="text-decoration: none;cursor:pointer;float: left;font-size: 20px;font-weight: 200;max-width:130px;'
-                                + 'padding-top: 10px;padding-right: 20px;padding-bottom: 10px;padding-left: 20px;text-shadow: 0px 0px 0px;color:#eee;word-break:keep-all;text-overflow:ellipsis;overflow: hidden;" >'
-                                + nickName
-                                + '</a>'
-                                + '<span onclick="IM.EV_logout()" style="cursor:pointer;float: right;font-size: 20px;font-weight: 200;'
-                                + 'padding-top: 10px;padding-bottom: 10px;text-shadow: 0px 0px 0px;color:#eeeeee">退出</span>');
+                    + '<a onclick="IM.DO_userMenu()" style="text-decoration: none;cursor:pointer;float: left;font-size: 20px;font-weight: 200;max-width:130px;'
+                    + 'padding-top: 10px;padding-right: 20px;padding-bottom: 10px;padding-left: 20px;text-shadow: 0px 0px 0px;color:#eee;word-break:keep-all;text-overflow:ellipsis;overflow: hidden;" >'
+                    + nickName
+                    + '</a>'
+                    + '<span onclick="IM.EV_logout()" style="cursor:pointer;float: right;font-size: 20px;font-weight: 200;'
+                    + 'padding-top: 10px;padding-bottom: 10px;text-shadow: 0px 0px 0px;color:#eeeeee">退出</span>');
                 IM._username = nickName;
             }, function(obj) {
                 alert('错误码：' + obj.code + '; 错误描述：' + obj.msg);
@@ -4561,9 +4567,9 @@
 
         _cancelTakePic: function() {
             IM.HTML_pop_takePicture_hide();
-            var onErr = function(obj) {
-                alert('错误码：' + obj.code + '; 错误码描述：' + obj.msg);
-            };
+            // var onErr = function(obj) {
+            //     alert('错误码：' + obj.code + '; 错误码描述：' + obj.msg);
+            // };
             RL_YTX.photo.cancel();
         },
         DO_takePicture: function() {
@@ -4625,7 +4631,7 @@
             });
             var resultObj = RL_YTX.photo.make();
             IM.HTML_pop_takePicture_hide();
-            if ('174010' === resultObj.code) {// 没有调用applay方法
+            if (resultObj.code === '174010') {// 没有调用applay方法
                 alert('错误描述：' + resultObj.msg);
             } else {
                 var windowWid = $(window).width();
@@ -4773,7 +4779,7 @@
                                         + '</span>';
                             }
                             if (msg.msgType === 5) {// zzx
-                                var jsonObj = eval('(' + obj.msgContent + ')');
+                                var jsonObj = JSON.parse(obj.msgContent);
                                 var lat = jsonObj.lat; // 纬度
                                 var lon = jsonObj.lon; // 经度
                                 var title = jsonObj.title; // 位置信息描述
