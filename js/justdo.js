@@ -477,7 +477,6 @@
             IM._onCallMsgListener = null;
             // 阅后即焚监听
             IM._onMsgNotifyReceiveListener = null;
-            $('#fireMessage').removeClass('active');
             // 清理左侧数据
             $('#im_contact_list').empty();
             // 清理右侧数据
@@ -679,9 +678,6 @@
             obj.setText(text);
             obj.setType(1);
             obj.setReceiver(receiver);
-            if ($('#fireMessage').attr('class').indexOf('active') > -1) {// domain
-                obj.setDomain('fireMessage');
-            }
             var msgId = RL_YTX.sendMsg(obj, function(obj) {
                 $('#im_send_content').html('');
                 $(document.getElementById(receiver + '_' + obj.msgClientNo)).show();
@@ -804,9 +800,7 @@
             obj.setFile(file);
             obj.setType(type);
             obj.setReceiver(receiver);
-            if ($('#fireMessage').attr('class').indexOf('active') > -1) {// domain
-                obj.setDomain('fireMessage');
-            }
+
             var oldMsg = $(document.getElementById(receiver + '_' + oldMsgid));
             oldMsg.attr('msg', 'msg');
             oldMsg.css('display', 'block');
@@ -890,9 +884,6 @@
             obj.setType(type);
             obj.setOsUnityAccount(receiver);
 
-            if ($('#fireMessage').attr('class').indexOf('active') > -1) {// domain
-                obj.setDomain('fireMessage');
-            }
             var oldMsg = $(document.getElementById(receiver + '_' + oldMsgid));
             oldMsg.attr('msg', 'msg');
             oldMsg.css('display', 'block');
@@ -1003,9 +994,6 @@
             obj.setUserData();
             obj.setType(1);
             obj.setOsUnityAccount(receiver);
-            if ($('#fireMessage').attr('class').indexOf('active') > -1) {// domain
-                obj.setDomain('fireMessage');
-            }
 
             var msgid = RL_YTX.sendToDeskMessage(obj, function(obj) {
                 var msg = $(document.getElementById(receiver + '_' + obj.msgClientNo));
@@ -1683,9 +1671,6 @@
         DO_push_createMsgDiv: function(obj) {
             // 判断是否是阅后即焚消息
             var isFireMsg = false;
-            if (IM._fireMessage === obj.msgDomain) {
-                isFireMsg = true;
-            }
 
             var b_isGroupMsg = obj.msgReceiver.substr(0, 1) === 'g';
             // zyh var you_sender = (b_isGroupMsg) ? obj.msgReceiver : obj.msgSender;
@@ -2588,23 +2573,7 @@
 
                     // zyhh
             $('#im_content_list').append(str);
-            if (you_msgContent.indexOf('fireMsg') > -1) {// fireMsg="yes"
-                var id = you_sender + '_' + version;
-                $(document.getElementById(id)).find('code').next().hide();
-                var windowWid = $(window).width();
-                var imgWid = 0;
-                var imgHei = 0;
-                if (windowWid < 666) {
-                    imgWid = 100;
-                    imgHei = 150;
-                } else {
-                    imgWid = 150;
-                    imgHei = 200;
-                }
-                var fireMsgStr = '<img style="cursor:pointer;max-width:' + imgWid + 'px; max-height:' + imgHei + 'px; margin-right:5px; margin-left:5px;" ' +
-                        'src="assets/img/fireMessageImg.png" onclick="IM.DO_showFireMsg(\'' + id + '\',\'' + msgtype + '\')" />';
-                $(document.getElementById(id)).append(fireMsgStr);
-            }
+
             setTimeout(function() {
                 $('#im_content_list').scrollTop($('#im_content_list')[0].scrollHeight);
             }, 100);
@@ -2794,7 +2763,6 @@
          */
         DO_chooseContactList: function(contact_type, contact_you) {
             IM.HTML_clean_im_contact_list();
-            $('#fireMessage').removeClass('active');
             var current_contact = document.getElementById('im_contact_' + contact_you);
             $(current_contact).addClass('active');
             var warn = $(current_contact).find('span[contact_style_type="warn"]');
@@ -2808,13 +2776,11 @@
 
             // 显示用户的状态
             if (IM._contact_type_c === contact_type) {
-                $('#fireMessage').show();
                 $('#voipInvite').show();
                 $('#voiceInvite').show();
                 $('#luodi').show();
                 IM.EV_getUserState(contact_you);
             } else if (IM._contact_type_g === contact_type) {
-                $('#fireMessage').hide();
                 $('#voipInvite').hide();
                 $('#voiceInvite').hide();
                 $('#luodi').hide();
@@ -5074,14 +5040,6 @@
                 alert('错误码：' + obj.code + '; 错误描述：' + obj.msg);
             });
             $('#pop_videoView').hide();
-        },
-        DO_fireMsg: function(obj) {
-
-            if ($(obj).attr('class').indexOf('active') > -1) {
-                $(obj).removeClass('active');
-            } else {
-                $(obj).addClass('active');
-            }
         },
        /**
         * 录音发送
