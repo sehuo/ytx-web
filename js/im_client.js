@@ -5365,14 +5365,6 @@
                 return;
             });
         },
-
-        /**
-         * 邀请成员加入群组
-         *
-         * @param groupId
-         * @param permission
-         * @constructor
-         */
         /**
          * 邀请成员加入群组
          *
@@ -5381,51 +5373,50 @@
          * @constructor
          */
         EV_inviteGroupMember: function(groupId, permission, isowner, groupName, memberSts) {
-            var memberArr = memberSts.split(',');
-            var number = memberArr.length;
-            // 校验邀请参数是否符合要求
-            for (var i =0; i < number; i++) {
-                if (memberArr[i] === IM._user_account) {
-                    return;
-                }
-                if (!IM.DO_checkContact(memberArr[i])) {
-                    return;
-                }
-            }
+            var maxInvite = 50;
+            // 分批邀请
+            var inviteMember = function(memberArr){
+                var number = memberArr.length;
+                var confirm = 1; // 是否需要邀请者确认 可选 1不需要 2需要 默认为2
+                var target = permission === 4 ? 1 : 2;
+                var builder = new RL_YTX.InviteJoinGroupBuilder(groupId, null, memberArr, confirm);
+                RL_YTX.inviteJoinGroup(builder, function() {
+                    if (confirm === 1) {
+                        for (var i =0; i < number; i++) {
+                            IM.HTML_popAddMember(groupId, memberArr[i], memberArr[i], isowner, target);
+                        }
+                    }
 
-            if (permission !== 4) {
-                if (memberArr.length > 50) {
-                    alert('邀请用户过多！');
-                    return;
-                }
+                    IM.HTML_addContactToList(groupId, groupName,
+                        IM._contact_type_g, true, true, false,
+                        IM._user_account, 1, 1);
+                }, function(obj) {
+                    console.log('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
+                });
             }
-            var confirm = 1; // 是否需要邀请者确认 可选 1 不需要 2 需要 默认为2
-            var target = 2;
-            if (permission === 1 || permission === 4) {
-                confirm = 1;
-            } else {
-                confirm = 2;
-            }
-            if (permission === 4) {
-                target = 1;
-            } else {
-                target = 2;
-            }
-            var builder = new RL_YTX.InviteJoinGroupBuilder(groupId, null,
-                    memberArr, confirm);
-            RL_YTX.inviteJoinGroup(builder, function() {
-                if (confirm === 1) {
-                    for (var i =0; i < number; i++) {
-                        IM.HTML_popAddMember(groupId, memberArr[i], memberArr[i], isowner, target);
+            // 剔除不符合邀请用户
+            var resetMember = function(memberArr){
+                var number = memberArr.length;
+                for (var i = 0; i < number; i++) {
+                    if (memberArr[i] === IM._user_account || !IM.DO_checkContact(memberArr[i])) {
+                        memberArr.splice(i, 1);
                     }
                 }
+                return memberArr;
+            }
+            var memberArr = resetMember(memberSts.split(','));
+            var inviteNum = memberArr.length;
+            // 总批次
+            var queeLen = Math.ceil(inviteNum/maxInvite);
 
-                IM.HTML_addContactToList(groupId, groupName,
-                    IM._contact_type_g, true, true, false,
-                    IM._user_account, 1, 1);
-            }, function(obj) {
-                alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
-            });
+            if(!queeLen){
+                return;
+            }
+
+            for(var i = 0; i < queeLen; i++){
+                var _memberArr = memberArr.slice(i * maxInvite, (i + 1) * maxInvite);
+                inviteMember(_memberArr);
+            }
         }
     }
 })()
