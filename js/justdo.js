@@ -6,7 +6,9 @@
 
 (function() {
     window.IM = window.IM || {
-        _appid: '20150314000000110000000000000010', // 应用I
+        // _appid: '20150314000000110000000000000010', // 应用I
+        // 8a216da854ff8dcc0155023d7c340633
+        _appid: '8a216da854ff8dcc0155023d7c340633',
         _onUnitAccount: 'KF10089', // 多渠道客服帐号，目前只支持1个
         _3rdServer: 'http://123.57.230.158:8886/authen/', // 3rdServer，主要用来虚拟用户服务器获取SIG
 
@@ -275,7 +277,7 @@
         _login: function(user_account, pwd) {
             var timestamp = IM._getTimeStamp();
 
-            var flag = true;// 是否从第三方服务器获取sig
+            var flag = false;// 是否从第三方服务器获取sig
             if (flag) {
                 IM._privateLogin(user_account, timestamp, function(obj) {
                     console.log('obj.sig:' + obj.sig);
@@ -287,10 +289,10 @@
             } else {
                 // 仅用于本地测试，官方不推荐这种方式应用在生产环境
                 // 没有服务器获取sig值时，可以使用如下代码获取sig
-                // var appToken = '17E24E5AFDB6D0C1EF32F3533494502B';// 使用是赋值为应用对应的appToken
-                // var sig = hex_md5(IM._appid + user_account + timestamp + appToken);
-                // console.log("本地计算sig："+sig);
-                // IM.EV_login(user_account, pwd, sig, timestamp);
+                var appToken = '074ea3efe06afabb6b3e64e9d3ff6f2c';// 使用是赋值为应用对应的appToken
+                var sig = hex_md5(IM._appid + user_account + timestamp + appToken);
+                console.log("本地计算sig："+sig);
+                IM.EV_login(user_account, pwd, sig, timestamp);
             }
         },
 
@@ -1123,7 +1125,7 @@
                     return;
                 }
                 for (var i in memberArr) {
-                    if (i === IM._user_account) {
+                    if (memberArr[i] === IM._user_account) {
                         $('#createGroup_bt').removeAttr('disabled');
                         return;
                     }
@@ -2569,9 +2571,6 @@
             }
             // zyhhh
 
-
-
-                    // zyhh
             $('#im_content_list').append(str);
 
             setTimeout(function() {
@@ -5290,3 +5289,143 @@
         }
     };
 })();
+
+
+(function(){
+    window.ZQC_IM = {
+        _checkGroupName: function(groupName){
+            if (!groupName) {
+                IM.HTML_showAlert('alert-error', '请填写群组名称，用来创建群组');
+                return false;
+            } else {// 校验群组名称的合法性
+                var regx1 = /^[\\x00-\\x7F\a-zA-Z\u4e00-\u9fa5_-]{0,10}$/;
+                if (regx1.exec(groupName) == null) {
+                    alert('群组名只允许中英文数字@_-,长度不超过10');
+                    return false;
+                }
+                if (/^g/i.test(groupName)) {
+                    alert('群组名不能以g或G开头');
+                    return false;
+                }
+                if (/@/g.test(groupName)) {
+                    alert('群组名不能含有@符号');
+                    return false;
+                }
+            }
+            return true;
+        },
+
+        /**
+         * 事件，创建群组
+         *
+         * @param groupName
+         * @param permission 1随便加入 2要验证  3私有  4讨论组
+         * @constructor
+         */
+        EV_createGroup: function(groupName, permission, memberSts) {
+            if(!this._checkGroupName(groupName)){
+                return;
+            }
+            var that = this;
+            console.log('create group...groupName[' + groupName + '] permission[' + permission + ']');
+
+            var obj = new RL_YTX.CreateGroupBuilder();
+            obj.setGroupName(groupName);
+            obj.setPermission(permission);
+
+            // 群组说明
+            // obj.setDeclared('');
+            // 群组类型：同学、同事。。
+            // obj.setGroupType(groupType);
+
+            // target参数 1讨论组 2 群组
+            if (permission === 4) {
+                obj.setTarget(1);
+            } else {
+                obj.setTarget(2);
+            }
+
+            RL_YTX.createGroup(obj, function(obj) {
+                var groupId = obj.data;
+                console.log('create group succ... groupId[' + groupId + ']');
+                if (permission === 4) {
+                    // 如果是讨论组，需要在讨论组创建成功之后随即添加账号
+                    // 左侧名称列表
+                    
+                } else {
+                    // 左侧名称列表
+                    IM.HTML_addContactToList(groupId, groupName,
+                    IM._contact_type_g, true, true, false,
+                    IM._user_account, 1, 2);
+                }
+
+                that.EV_inviteGroupMember(groupId, permission, true, groupName, memberSts);
+            }, function(obj) {
+                alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
+                return;
+            });
+        },
+
+        /**
+         * 邀请成员加入群组
+         *
+         * @param groupId
+         * @param permission
+         * @constructor
+         */
+        /**
+         * 邀请成员加入群组
+         *
+         * @param groupId
+         * @param permission
+         * @constructor
+         */
+        EV_inviteGroupMember: function(groupId, permission, isowner, groupName, memberSts) {
+            var memberArr = memberSts.split(',');
+            var number = memberArr.length;
+            // 校验邀请参数是否符合要求
+            for (var i =0; i < number; i++) {
+                if (memberArr[i] === IM._user_account) {
+                    return;
+                }
+                if (!IM.DO_checkContact(memberArr[i])) {
+                    return;
+                }
+            }
+
+            if (permission !== 4) {
+                if (memberArr.length > 50) {
+                    alert('邀请用户过多！');
+                    return;
+                }
+            }
+            var confirm = 1; // 是否需要邀请者确认 可选 1 不需要 2 需要 默认为2
+            var target = 2;
+            if (permission === 1 || permission === 4) {
+                confirm = 1;
+            } else {
+                confirm = 2;
+            }
+            if (permission === 4) {
+                target = 1;
+            } else {
+                target = 2;
+            }
+            var builder = new RL_YTX.InviteJoinGroupBuilder(groupId, null,
+                    memberArr, confirm);
+            RL_YTX.inviteJoinGroup(builder, function() {
+                if (confirm === 1) {
+                    for (var i =0; i < number; i++) {
+                        IM.HTML_popAddMember(groupId, memberArr[i], memberArr[i], isowner, target);
+                    }
+                }
+
+                IM.HTML_addContactToList(groupId, groupName,
+                    IM._contact_type_g, true, true, false,
+                    IM._user_account, 1, 1);
+            }, function(obj) {
+                alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
+            });
+        }
+    }
+})()
