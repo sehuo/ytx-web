@@ -1,4 +1,4 @@
-/* global RL_YTX, IM, $, emoji, BMap */
+/* global RL_YTX, IM, $, emoji */
 'use strict';
 /**
  * Created by JKZ on 2015/6/9.
@@ -34,7 +34,7 @@
         _baiduMap: null,
         _loginType: 1, // 登录类型: 1账号登录，3voip账号密码登录
 
-        logs: function(str, type){
+        logs: function(str, type) {
             var type = type || 'info';
             console[type](str);
         },
@@ -45,7 +45,7 @@
          * @private
          */
         init: function(callback) {
-            if(!window.IM_config.user_account){
+            if (!window.IM_config.user_account) {
                 alert('登录信息错误');
                 return;
             }
@@ -79,8 +79,8 @@
                     IM.SendVoiceAndVideo_isDisable();
                 }
 
-                if(window.IM_config.user_account){
-                    this._login(window.IM_config.user_account, '', function(){
+                if (window.IM_config.user_account) {
+                    this._login(window.IM_config.user_account, '', function() {
                         callback && callback.call(this);
                     });
                 }
@@ -271,8 +271,7 @@
             } else {
                 // 仅用于本地测试，官方不推荐这种方式应用在生产环境
                 // 没有服务器获取sig值时，可以使用如下代码获取sig
-                var appToken = window.IM_config.appToken;// 使用是赋值为应用对应的appToken
-                var sig = hex_md5(IM._appid + user_account + timestamp + appToken);
+                var sig = window.IM_config.sig;
                 IM.EV_login(user_account, pwd, sig, timestamp, callback);
             }
         },
@@ -344,7 +343,7 @@
             }
             loginBuilder.setTimestamp(timestamp);
 
-            RL_YTX.login(loginBuilder, function(obj) {
+            RL_YTX.login(loginBuilder, function(/* obj */) {
                 console.log('EV_login succ...: ');
                 IM._user_account = user_account;
                 IM._username = user_account;
@@ -352,12 +351,6 @@
                 IM._onMsgReceiveListener = RL_YTX.onMsgReceiveListener(function(obj) {
                     IM.EV_onMsgReceiveListener(obj);
                 });
-                // 注册客服消息监听
-                /*
-                IM._onDeskMsgReceiveListener = RL_YTX.onMCMMsgReceiveListener(function(obj) {
-                    IM.EV_onMsgReceiveListener(obj);
-                });
-                */
                 // 注册群组通知事件监听
                 IM._noticeReceiveListener = RL_YTX.onNoticeReceiveListener(function(obj) {
                     IM.EV_noticeReceiveListener(obj);
@@ -534,7 +527,6 @@
             console.log('EV_onCallMsgListener = ');
             console.dir(obj);
             var im_contact;
-            var noticeMsg = '';// 桌面提醒消息
             var str;
             if (obj.callType === 1) {// 视频
                 if (obj.code === 200) {
@@ -546,15 +538,12 @@
                     } else if (obj.state === 3) {// 被叫接受
                         document.getElementById('voipCallRing').pause();
                         $('#cancelVoipCall').text('结束');
-                        noticeMsg = '[接收视频通话]';
                     } else if (obj.state === 4) {// 呼叫失败 对主叫设定：自动取消，对方拒绝或者忙
                         $('#pop_videoView').hide();
                         document.getElementById('voipCallRing').pause();
-                        noticeMsg = '[视频通话结束]';
                     } else if (obj.state === 5) {// 结束通话  或者主叫取消（对被叫而言）
                         document.getElementById('voipCallRing').pause();
                         $('#pop_videoView').hide();
-                        noticeMsg = '[视频通话结束]';
                     } else if (obj.state === 6) {// 呼叫到达
                         // 添加左侧联系人
                         im_contact = $('#im_contact_list').find('li[contact_type="'
@@ -577,7 +566,6 @@
                         $('#refuseVoipCall').show();
                         // 本地播放振铃
                         document.getElementById('voipCallRing').play();
-                        noticeMsg = '[视频呼叫]';
                     }
                 } else {
                     str = '<pre>请求视频通话，请使用其他终端处理</pre>';
@@ -593,15 +581,12 @@
                     } else if (obj.state === 3) {// 被叫接受
                         document.getElementById('voipCallRing').pause();
                         $('#cancelVoiceCall').text('结束');
-                        noticeMsg = '[接收语音通话]';
                     } else if (obj.state === 4) {// 呼叫失败 是对主叫设定：主动取消，对方拒绝或者忙
                         $('#pop_videoView').hide();
                         document.getElementById('voipCallRing').pause();
-                        noticeMsg = '[语音通话结束]';
                     } else if (obj.state === 5) {// 结束通话  或者主叫取消（对被叫而言）
                         document.getElementById('voipCallRing').pause();
                         $('#pop_videoView').hide();
-                        noticeMsg = '[语音通话结束]';
                     } else if (obj.state === 6) {// 呼叫到达
                         // 添加左侧联系人
                         im_contact = $('#im_contact_list').find('li[contact_type="'
@@ -624,17 +609,11 @@
                         $('#refuseVoiceCall').show();
                         // 本地播放振铃
                         document.getElementById('voipCallRing').play();
-                        noticeMsg = '[语音呼叫]';
                     }
                 } else {
                     str = '<pre>请求语音通话，请使用其他终端处理</pre>';
                     IM.HTML_pushCall_addHTML(obj.caller, obj.callId, str);
                 }
-            }
-
-            // 桌面提醒通知
-            if (!!noticeMsg) {
-                IM.DO_deskNotice(obj.caller, '', noticeMsg, '', false, true);
             }
         },
 
@@ -1844,9 +1823,6 @@
                 IM.HTML_pushMsg_addHTML(msgType, you_sender, version,
                         content_type, b_current_contact_you, name, str, inforSender);
 
-                // 桌面提醒通知
-                IM.DO_deskNotice(you_sender, name, you_msgContent, msgType, isFireMsg, false);
-
             } else if (obj.mcmEvent === 1) {// 1 start消息
                 IM.HTML_pushMsg_addHTML(obj.msgType, you_sender, version,
                         IM._contact_type_m, b_current_contact_you, name,
@@ -2154,7 +2130,6 @@
             var peopleId = obj.member;
             var people = (!!obj.memberName) ? obj.memberName : obj.member;
             var you_msgContent = '';
-            var noticeContent = '';
             // 1,(1申请加入群组，2邀请加入群组，3直接加入群组，4解散群组，5退出群组，6踢出群组，7确认申请加入，8确认邀请加入，
             // 9邀请加入群组的用户因本身群组个数超限加入失败(只发送给邀请者)10管理员修改群组信息，11用户修改群组成员名片12新增管理员变更通知)
             var auditType = obj.auditType;
@@ -2175,15 +2150,9 @@
                         + '\', 2)">同意</a>}{<a style="color: red; cursor: pointer;" onclick="IM.EV_confirmJoinGroup(\''
                         + you_sender + '\', \'' + version + '\', \'' + groupId
                         + '\', \'' + peopleId + '\', 1)">拒绝</a>}</span>';
-                noticeContent = '['
-                        + people
-                        + ']申请加入' + groupTarget + '['
-                        + groupName
-                        + '] ';
             } else if (auditType === 2) {
                 if (obj.confirm === 1) {
                     you_msgContent = '[' + groupName + ']管理员邀请您加入' + groupTarget;
-                    noticeContent = you_msgContent;
                     // 在群组列表中添加群组项
                     var current_contact_type = IM.HTML_find_contact_type();
                     var isShow = false;
@@ -2210,27 +2179,20 @@
                             + you_sender + '\', \'' + groupName + '\', \''
                             + version + '\', \'' + obj.admin + '\', \''
                             + groupId + '\', 1)">拒绝</a>}</span>';
-                    noticeContent = '['
-                            + groupName
-                            + ']管理员邀请您加入群组;';
                 }
             } else if (auditType === 3) {
                 you_msgContent = '[' + people + ']直接加入群组[' + groupName + ']';
-                noticeContent = you_msgContent;
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
             } else if (auditType === 4) {
                 you_msgContent = '管理员解散了群组[' + groupName + ']';
-                noticeContent = you_msgContent;
                 // 将群组从列表中移除
                 IM.HTML_remove_contact(groupId);
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
             } else if (auditType === 5) {
                 you_msgContent = '[' + people + ']退出了' + groupTarget + '[' + groupName + ']';
-                noticeContent = you_msgContent;
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
             } else if (auditType === 6) {
                 you_msgContent = '[' + groupName + ']管理员将[' + people + ']踢出' + groupTarget;
-                noticeContent = you_msgContent;
                 // 将群组从列表中移除
                 if (IM._user_account === people) {
                     IM.HTML_remove_contact(groupId);
@@ -2239,17 +2201,14 @@
             } else if (auditType === 7) {
                 you_msgContent = '管理员同意[' + people + ']加入群组[' + groupName
                         + ']的申请';
-                noticeContent = you_msgContent;
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId, people);
             } else if (auditType === 8) {
                 if (obj.confirm !== 2) {
                     you_msgContent = '[' + people + ']拒绝了群组[' + groupName
                             + ']的邀请';
-                    noticeContent = you_msgContent;
                 } else {
                     you_msgContent = '[' + people + ']同意了管理员的邀请，加入群组['
                             + groupName + ']';
-                    noticeContent = you_msgContent;
                     IM.DO_procesGroupNotice(auditType, groupId, peopleId,
                             people);
                 }
@@ -2261,8 +2220,6 @@
                 } else {
                     you_msgContent = '用户[' + people + ']修改了讨论组[' + groupName + ']信息';
                 }
-
-                noticeContent = you_msgContent;
                 if (!!obj.groupName) {
                     IM.HTML_addContactToList(groupId, obj.groupName,
                             IM._contact_type_g, false, isShow, true, null,
@@ -2272,18 +2229,15 @@
                         obj.groupName, obj.ext);
             } else if (auditType === 11) {
                 you_msgContent = '用户[' + people + ']修改群组成员名片';
-                noticeContent = you_msgContent;
                 // TODO obj.memberName有值，意味着要修改展示的名字
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId,
                         obj.memberName, obj.groupName, obj.ext);
             } else if (auditType === 12) {
                 you_msgContent = '用户[' + people + ']成为' + groupTarget + '[' + groupName + ']管理员';
-                noticeContent = you_msgContent;
                 IM.DO_procesGroupNotice(auditType, groupId, peopleId,
                     obj.memberName, obj.groupName, obj.ext);
             } else {
                 you_msgContent = '未知type[' + auditType + ']';
-                noticeContent = you_msgContent;
             }
 
             // 添加左侧消息
@@ -2294,8 +2248,6 @@
             // 添加右侧消息zyh
             IM.HTML_pushMsg_addHTML(1, you_sender, version, IM._contact_type_g,
                 b_current_contact_you, groupName, you_msgContent);
-            // 桌面提醒通知
-            IM.DO_deskNotice('', '', noticeContent, '', false, false);
         },
 
         /**
@@ -4669,7 +4621,7 @@
                                         + '</span>';
                             }
                             if (msg.msgType === 5) {// zzx
-                                
+
                             }
                             if (msg.msgType === 7) {
                                 str = '<span imtype="msg_attach">'
@@ -5085,63 +5037,7 @@
                 $(this).remove();
             });
         },
-        /**
-        * 桌面提醒功能
-        * @param you_sender 消息发送者账号
-        * @param nickName 消息发送者昵称
-        * @param you_msgContent 接收到的内容
-        * @param msgType 消息类型
-        * @param isfrieMsg 是否阅后即焚消息
-        * @param isCallMsg 是否音视频呼叫消息
-        */
-        DO_deskNotice: function(you_sender, nickName, you_msgContent, msgType, isfrieMsg, isCallMsg) {
-            console.log('you_msgContent=' + you_msgContent + '；msgType=' + msgType + '；isCallMsg=' + isCallMsg);
-            var title;
-            var body = '';
-            if (!!you_sender || !!nickName) {
-                if (you_sender.substr(0, 1) === 'g') {
-                    title = '群消息';
-                    if (!!nickName) {
-                        body = nickName + ':';
-                    } else {
-                        body = you_sender + ':';
-                    }
-                } else {
-                    if (!!nickName) {
-                        title = nickName;
-                    } else {
-                        title = you_sender;
-                    }
-                }
 
-            } else {
-                title = '系统通知';
-                body = you_msgContent;
-            }
-
-            if (isfrieMsg) {
-                body += '[阅后即焚消息]';
-            } else if (isCallMsg) {
-                body += you_msgContent;
-            } else {
-                if (msgType === 1) {
-                    emoji.showText = true;
-                    you_msgContent = emoji.replace_unified(you_msgContent);
-                    emoji.showText = false;
-                    body += you_msgContent;
-                } else if (msgType === 2) {
-                    body += '[语音]';
-                } else if (msgType === 3) {
-                    body += '[视频]';
-                } else if (msgType === 4) {
-                    body += '[图片]';
-                } else if (msgType === 5) {
-                    body += '[位置]';
-                } else if (msgType === 6 || msgType === 7) {
-                    body += '[附件]';
-                }
-            }
-        },
         /**
         * 获取hidden属性
         */

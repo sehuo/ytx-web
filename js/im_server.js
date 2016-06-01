@@ -1,4 +1,4 @@
-/* global RL_YTX, IM, $, emoji, BMap */
+/* global RL_YTX, IM, $ */
 'use strict';
 /**
  * Created by JKZ on 2015/6/9.
@@ -34,7 +34,7 @@
         _baiduMap: null,
         _loginType: 1, // 登录类型: 1账号登录，3voip账号密码登录
 
-        logs: function(str, type){
+        logs: function(str, type) {
             var type = type || 'info';
             console[type](str);
         },
@@ -71,7 +71,7 @@
          * @private
          */
         init: function(callback) {
-            if(!window.IM_config.user_account){
+            if (!window.IM_config.user_account) {
                 alert('登录信息错误');
                 return;
             }
@@ -93,8 +93,8 @@
                     console.log('不支持音视频呼叫，音视频不可用');
                 }
 
-                if(window.IM_config.user_account){
-                    this._login(window.IM_config.user_account, '', function(){
+                if (window.IM_config.user_account) {
+                    this._login(window.IM_config.user_account, '', function() {
                         callback && callback.call(this);
                     });
                 }
@@ -159,8 +159,7 @@
             } else {
                 // 仅用于本地测试，官方不推荐这种方式应用在生产环境
                 // 没有服务器获取sig值时，可以使用如下代码获取sig
-                var appToken = window.IM_config.appToken;// 使用是赋值为应用对应的appToken
-                var sig = hex_md5(IM._appid + user_account + timestamp + appToken);
+                var sig = window.IM_config.sig;
                 IM.EV_login(user_account, pwd, sig, timestamp, callback);
             }
         },
@@ -232,11 +231,10 @@
             }
             loginBuilder.setTimestamp(timestamp);
 
-            RL_YTX.login(loginBuilder, function(obj) {
+            RL_YTX.login(loginBuilder, function() {
                 console.log('EV_login succ...: ');
                 IM._user_account = user_account;
                 IM._username = user_account;
-               
                 callback && callback.call(that);
             }, function(obj) {
                 alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
@@ -284,8 +282,8 @@
             }
             return true;
         },
-       
-        _checkGroupName: function(groupName){
+
+        _checkGroupName: function(groupName) {
             if (!groupName) {
                 IM.HTML_showAlert('alert-error', '请填写群组名称，用来创建群组');
                 return false;
@@ -315,7 +313,7 @@
          * @constructor
          */
         createGroup: function(groupName, permission, memberSts, declared, callback) {
-            if(!this._checkGroupName(groupName)){
+            if (!this._checkGroupName(groupName)) {
                 return;
             }
             var that = this;
@@ -355,15 +353,13 @@
         inviteGroupMember: function(groupId, permission, isowner, groupName, memberSts) {
             var maxInvite = 50;
             // 分批邀请
-            var inviteMember = function(memberArr){
-                var number = memberArr.length;
+            var inviteMember = function(memberArr) {
                 var confirm = 1; // 是否需要邀请者确认 可选 1不需要 2需要 默认为2
-                var target = permission === 4 ? 1 : 2;
                 var builder = new RL_YTX.InviteJoinGroupBuilder(groupId, null, memberArr, confirm);
-                RL_YTX.inviteJoinGroup(builder, function(){}, function() {});
-            }
+                RL_YTX.inviteJoinGroup(builder, function() {}, function() {});
+            };
             // 剔除不符合邀请用户
-            var resetMember = function(memberArr){
+            var resetMember = function(memberArr) {
                 var number = memberArr.length;
                 for (var i = 0; i < number; i++) {
                     if (memberArr[i] === IM._user_account || !IM.DO_checkContact(memberArr[i])) {
@@ -371,17 +367,17 @@
                     }
                 }
                 return memberArr;
-            }
+            };
             var memberArr = resetMember(memberSts.split(','));
             var inviteNum = memberArr.length;
             // 总批次
-            var queeLen = Math.ceil(inviteNum/maxInvite);
+            var queeLen = Math.ceil(inviteNum / maxInvite);
 
-            if(!queeLen){
+            if (!queeLen) {
                 return;
             }
 
-            for(var i = 0; i < queeLen; i++){
+            for (var i = 0; i < queeLen; i++) {
                 var _memberArr = memberArr.slice(i * maxInvite, (i + 1) * maxInvite);
                 inviteMember(_memberArr);
             }

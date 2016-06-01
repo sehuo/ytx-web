@@ -11,6 +11,7 @@
         window.IM_config = {
             appId: '8a216da854ff8dcc0155023d7c340633',
             appToken: '074ea3efe06afabb6b3e64e9d3ff6f2c',
+            sig: new Date().getTime() + (Math.random() * 1000000).toFixed(0), // MD5(appid+user_account+timestamp(yyyyMMddHHmmss)+apptoken);
             user_account: '1111'
         }
     </script>
@@ -31,8 +32,6 @@
     <!-- 地图 -->
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" /> 
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
-    <script src="http://api.map.baidu.com/api?v=2.0&ak=bG4GYISkIpM2j8CgjeUaRwzQ" type="text/javascript"></script>
-
 
     <link href="assets/css/bootstrap.css" rel="stylesheet">
     <link href="assets/css/bootstrap-responsive.css" rel="stylesheet">
