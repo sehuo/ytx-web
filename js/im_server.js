@@ -1,4 +1,4 @@
-/* global RL_YTX, IM, $ */
+/* global RL_YTX, IM, $, hex_md5 */
 'use strict';
 /**
  * Created by JKZ on 2015/6/9.
@@ -153,13 +153,13 @@
                     console.log('obj.sig:' + obj.sig);
                     IM.EV_login(user_account, pwd, obj.sig, timestamp, callback);
                 }, function(obj) {
-                    $('#navbar_user_account').removeAttr('readonly');
                     alert('错误码：' + obj.code + '; 错误描述：' + obj.msg);
                 });
             } else {
                 // 仅用于本地测试，官方不推荐这种方式应用在生产环境
                 // 没有服务器获取sig值时，可以使用如下代码获取sig
-                var sig = window.IM_config.sig;
+                var appToken = window.IM_config.appToken;// 使用是赋值为应用对应的appToken
+                var sig = hex_md5(IM._appid + user_account + timestamp + appToken);
                 IM.EV_login(user_account, pwd, sig, timestamp, callback);
             }
         },
@@ -237,7 +237,7 @@
                 IM._username = user_account;
                 callback && callback.call(that);
             }, function(obj) {
-                alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
+                alert('登录错误码： ' + obj.code + '; 错误描述：' + obj.msg);
             });
         },
 
