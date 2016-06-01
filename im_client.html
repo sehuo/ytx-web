@@ -7,7 +7,13 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title></title>
-
+    <script type="text/javascript">
+        window.IM_config = {
+            appId: '8a216da854ff8dcc0155023d7c340633',
+            appToken: '074ea3efe06afabb6b3e64e9d3ff6f2c',
+            user_account: '1111'
+        }
+    </script>
     <!-- sdk -->
     <script type="text/javascript" src="http://app.cloopen.com/im50/ytx-web-im-min-new.js"></script>
 
@@ -162,29 +168,11 @@
     <div id="navbar" class="navbar navbar-inverse navbar-fixed-top" style="z-index: 999999">
         <div class="navbar-inner">
             <div class="container">
-                <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
                 <span><audio id="im_ring" src="js/ring.mp3"></audio></span>
-                    <span style="float: left;display: block;font-size: 20px;font-weight: 200;
-                    padding-top: 10px;padding-right: 20px;padding-bottom: 10px;padding-left: 20px;text-shadow: 0px 0px 0px;color:#eee">云通讯 IM</span>
-                <div id="navbar_login" class="nav-collapse in collapse" style="height: auto;" align="right">
-                    <div name="loginType" class="navbar-form pull-right" id="1">
-	                   <input id='navbar_user_account' style="width:160px;margin-right: 5px;" type="text" placeholder="Your Phone Number">
-	                   <input class="btn" type="button" onclick="IM.DO_login()" value="登录" />
-                    </div>
-                </div>
-                <div id="navbar_login_show" class="nav-collapse in collapse" style="display:none; height: auto; float: right;">
-					 <span style="float: left;display: block;font-size: 20px;font-weight: 200;padding-top: 10px;padding-bottom: 10px;
-					 text-shadow: 0px 0px 0px;color:#eee" >您好:</span>
-                     <a onclick="IM.DO_userMenu()" 
-                     style="text-decoration: none;cursor:pointer;float: left;font-size: 20px;font-weight: 200;max-width:130px;
-                     padding-top: 10px;padding-right: 20px;padding-bottom: 10px;padding-left: 20px;text-shadow: 0px 0px 0px;
-                     color:#eee;word-break:keep-all;text-overflow:ellipsis;overflow: hidden;" ></a>
-                     <span onclick="IM.EV_logout()" style="cursor:pointer;float: right;font-size: 20px;font-weight: 200;
-                                padding-top: 10px;padding-bottom: 10px;text-shadow: 0px 0px 0px;color:#eeeeee">退出</span>
+                <div id="navbar_login_show" class="nav-collapse in collapse" style="height: auto; float: right;">
+					 <span>您好:</span>
+                     <a onclick="IM.DO_userMenu()"></a>
+                     <span onclick="IM.EV_logout()">退出</span>
                 </div>
             </div>
         </div>

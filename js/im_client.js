@@ -8,7 +8,7 @@
     window.IM = window.IM || {
         // _appid: '20150314000000110000000000000010', // 应用I
         // 8a216da854ff8dcc0155023d7c340633
-        _appid: '8a216da854ff8dcc0155023d7c340633',
+        _appid: window.IM_config.appId,
         _onUnitAccount: 'KF10089', // 多渠道客服帐号，目前只支持1个
         _3rdServer: 'http://123.57.230.158:8886/authen/', // 3rdServer，主要用来虚拟用户服务器获取SIG
 
@@ -33,24 +33,30 @@
         _serverNo: 'XTOZ',
         _baiduMap: null,
         _loginType: 1, // 登录类型: 1账号登录，3voip账号密码登录
-        _Notification: null,
+
+        logs: function(str, type){
+            var type = type || 'info';
+            console[type](str);
+        },
 
         /**
          * 初始化
          *
          * @private
          */
-        init: function() {
+        init: function(callback) {
+            if(!window.IM_config.user_account){
+                alert('登录信息错误');
+                return;
+            }
             // 初始化SDK
             var resp = RL_YTX.init(IM._appid);
-            console.dir(resp);
+            this.logs('[SDK init]: ' + JSON.stringify(resp));
             if (!resp) {
                 alert('SDK初始化错误');
                 return;
             }
             if (resp.code === 200) {// 初始化成功
-                $('#navbar_login').show();
-                $('#navbar_login_show').hide();
 
                 // 重置页面高度变化
                 IM.HTML_resetHei();
@@ -71,7 +77,12 @@
 
                 } else if ($.inArray(174008, resp.unsupport) > -1) {// 不支持音视频呼叫，音视频不可用
                     IM.SendVoiceAndVideo_isDisable();
+                }
 
+                if(window.IM_config.user_account){
+                    this._login(window.IM_config.user_account, '', function(){
+                        callback && callback.call(this);
+                    });
                 }
             } else if (resp.code === 174001) {// 不支持HTML5
                 var r = confirm(resp.msg);
@@ -82,15 +93,6 @@
                 console.log('错误码：170002,错误码描述' + resp.msg);
             } else {
                 console.log('未知状态码');
-            }
-            IM._Notification = window.Notification || window.mozNotification || window.webkitNotification
-                    || window.msNotification || window.webkitNotifications;
-            if (IM._Notification) {
-                IM._Notification.requestPermission(function(permission) {
-                    if (IM._Notification[permission] !== 'granted') {
-                        IM._Notification[permission] = 'granted';
-                    }
-                });
             }
         },
 
@@ -136,13 +138,7 @@
             // 17=Ctrl 13=Enter  16=shift 50=@
 
             if (IM._keyCode_1 === 17 && IM._keyCode_2 === 13) {
-                if ($('#navbar_login').css('display') === 'none') {
-                    IM.DO_sendMsg();
-                }
-            } else if (IM._keyCode_1 !== 17 && IM._keyCode_2 === 13) {
-                if ($('#navbar_login').css('display') === 'block') {
-                    IM.DO_login();
-                }
+                IM.DO_sendMsg();
             } else if (IM._keyCode_1 === 16 && IM._keyCode_2 === 50) {// chrome、火狐、opear 英文输入法
                 // 判断如果是群组的话才展示成员列表
                 $('#im_contact_list').find('li').each(function() {
@@ -226,18 +222,17 @@
                 }
             }
         },
-
-        DO_login: function() {
-            console.log('DO_login');
-
-            var user_account = '';
-            var pwd = '';
-            if (IM._loginType === 1) {
-                user_account = $('#navbar_user_account').val();
-                if (IM.isNull(user_account)) {
-                    alert('请填写手机号后再登录');
-                    return;
-                }
+        /**
+         * 正式处理登录逻辑，此方法可供断线监听回调登录使用 获取时间戳，获取SIG，调用SDK登录方法
+         *
+         * @param user_account
+         * @param pwd 密码
+         * @private
+         */
+        _login: function(user_account, pwd, callback) {
+            if (IM.isNull(user_account)) {
+                alert('请填写手机号后再登录');
+                return;
             }
             // 校验登陆格式
             if (user_account.length > 128) {
@@ -262,26 +257,13 @@
                     return;
                 }
             }
-            $('#navbar_user_account').attr('readonly', 'readonly');
 
-            IM._login(user_account, pwd);
-        },
-
-        /**
-         * 正式处理登录逻辑，此方法可供断线监听回调登录使用 获取时间戳，获取SIG，调用SDK登录方法
-         *
-         * @param user_account
-         * @param pwd 密码
-         * @private
-         */
-        _login: function(user_account, pwd) {
             var timestamp = IM._getTimeStamp();
-
             var flag = false;// 是否从第三方服务器获取sig
             if (flag) {
                 IM._privateLogin(user_account, timestamp, function(obj) {
                     console.log('obj.sig:' + obj.sig);
-                    IM.EV_login(user_account, pwd, obj.sig, timestamp);
+                    IM.EV_login(user_account, pwd, obj.sig, timestamp, callback);
                 }, function(obj) {
                     $('#navbar_user_account').removeAttr('readonly');
                     alert('错误码：' + obj.code + '; 错误描述：' + obj.msg);
@@ -289,10 +271,9 @@
             } else {
                 // 仅用于本地测试，官方不推荐这种方式应用在生产环境
                 // 没有服务器获取sig值时，可以使用如下代码获取sig
-                var appToken = '074ea3efe06afabb6b3e64e9d3ff6f2c';// 使用是赋值为应用对应的appToken
+                var appToken = window.IM_config.appToken;// 使用是赋值为应用对应的appToken
                 var sig = hex_md5(IM._appid + user_account + timestamp + appToken);
-                console.log("本地计算sig："+sig);
-                IM.EV_login(user_account, pwd, sig, timestamp);
+                IM.EV_login(user_account, pwd, sig, timestamp, callback);
             }
         },
 
@@ -352,9 +333,9 @@
          *            时间戳要与生成SIG参数的时间戳保持一致
          * @constructor
          */
-        EV_login: function(user_account, pwd, sig, timestamp) {
+        EV_login: function(user_account, pwd, sig, timestamp, callback) {
             console.log('EV_login');
-
+            var that = this;
             var loginBuilder = new RL_YTX.LoginBuilder();
             loginBuilder.setType(IM._loginType);
             loginBuilder.setUserName(user_account);
@@ -365,7 +346,6 @@
 
             RL_YTX.login(loginBuilder, function(obj) {
                 console.log('EV_login succ...: ');
-                console.log(obj);
                 IM._user_account = user_account;
                 IM._username = user_account;
                 // 注册PUSH监听
@@ -424,9 +404,6 @@
                     }
                 });
                 $('#navbar_user_account').removeAttr('readonly');
-
-                $('#navbar_login').hide();
-                $('#navbar_login_show').show();
                 IM.EV_getMyInfo();
                 IM.HTML_LJ_none();
 
@@ -440,6 +417,7 @@
                 IM.HTML_addContactToList(IM._onUnitAccount, IM._onUnitAccount,
                     IM._contact_type_m, false, false, false, null, null,
                     null);
+                callback && callback.call(that);
             }, function(obj) {
                 $('#navbar_user_account').removeAttr('readonly');
                 alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
@@ -507,9 +485,6 @@
 
             // 联系人列表切换到沟通
             IM.DO_choose_contact_type('C');
-
-            $('#navbar_login').show();
-            $('#navbar_login_show').hide();
             IM.HTML_LJ_block('black');
         },
 
@@ -1789,27 +1764,6 @@
                     }
 
                 } else if (msgType === 5) {// 位置消息
-                    // str = '你接收了一条位置消息...';
-                    var jsonObj = JSON.parse(you_msgContent);
-                    var lat = jsonObj.lat; // 纬度
-                    var lon = jsonObj.lon; // 经度
-                    var title = jsonObj.title; // 位置信息描述
-                    var windowWid = $(window).width();
-                    var imgWid = 0;
-                    var imgHei = 0;
-                    if (windowWid < 666) {
-                        imgWid = 100;
-                        imgHei = 150;
-                    } else {
-                        imgWid = 150;
-                        imgHei = 200;
-                    }
-                    var str = '<img src="img/baidu.png" style="cursor:pointer;max-width:'
-                    + imgWid + 'px; max-height:' + imgHei
-                    + 'px;" onclick="IM.DO_show_map(\'' + lat
-                    + '\', \'' + lon + '\', \'' + title + '\')"/>';
-
-
                 } else if (msgType === 6) {// 压缩文件  仅支持火狐和谷歌浏览器
                     // var url = obj.msgFileUrl;
                     // var num = obj.msgFileSize;
@@ -2081,35 +2035,6 @@
             $('#carousels').empty();
             $('#carousels').append(str);
 
-            IM.HTML_pop_photo_show();
-        },
-
-        /**
-         * lat 纬度
-         * lon 经度
-         * title 位置信息描述
-         */
-        DO_show_map: function(lat, lon, title) {
-            $('#im_body').append('<div id=\'baiduMap\' style=\'z-index:888899; margin-left: 10%;margin-right:10%; height: 550px; width: 80%;\'></div>');
-            $('#carousels').empty();
-            var map = new BMap.Map('baiduMap'); // 创建地图实例
-            var point = new BMap.Point(lon, lat); // 创建点坐标
-            var marker = new BMap.Marker(point);        // 创建标注
-            map.addOverlay(marker);
-            map.centerAndZoom(point, 15);
-            var opts = {
-                width: 200,
-                height: 100,
-                enableMessage: true // 设置允许信息窗发送短息
-            };
-            var infoWindow = new BMap.InfoWindow(title, opts);  // 创建信息窗口对象
-            marker.addEventListener('click', function() {
-                map.openInfoWindow(infoWindow, point); // 开启信息窗口
-            });
-
-            IM._baiduMap = $('#baiduMap');
-            $('#carousels').append(IM._baiduMap);
-            $('#baiduMap').show();
             IM.HTML_pop_photo_show();
         },
 
@@ -4744,24 +4669,7 @@
                                         + '</span>';
                             }
                             if (msg.msgType === 5) {// zzx
-                                var jsonObj = JSON.parse(obj.msgContent);
-                                var lat = jsonObj.lat; // 纬度
-                                var lon = jsonObj.lon; // 经度
-                                var title = jsonObj.title; // 位置信息描述
-                                var windowWid = $(window).width();
-                                var imgWid = 0;
-                                var imgHei = 0;
-                                if (windowWid < 666) {
-                                    imgWid = 100;
-                                    imgHei = 150;
-                                } else {
-                                    imgWid = 150;
-                                    imgHei = 200;
-                                }
-                                var str = '<img src="img/baidu.png" style="cursor:pointer;max-width:'
-                                + imgWid + 'px; max-height:' + imgHei
-                                + 'px;" onclick="IM.DO_show_map(\'' + lat
-                                + '\', \'' + lon + '\', \'' + title + '\')"/>';
+                                
                             }
                             if (msg.msgType === 7) {
                                 str = '<span imtype="msg_attach">'
@@ -5233,36 +5141,6 @@
                     body += '[附件]';
                 }
             }
-            if (!IM._Notification || !IM.checkWindowHidden()) {
-                return;
-            }
-
-            var instance = new IM._Notification(
-                title, {
-                    body: body,
-                    icon: 'http://h5demo.yuntongxun.com/assets/img/logo-blue.png'
-                }
-            );
-
-            instance.onclick = function() {
-            // Something to do
-            };
-            instance.onerror = function() {
-            // Something to do
-                console.log('notification encounters an error');
-            };
-            instance.onshow = function() {
-            // Something to do
-                setTimeout(function() {
-                // instance.onclose();
-                    instance.close();
-                }, 3000);
-            };
-            instance.onclose = function() {
-            // Something to do
-                console.log('notification is closed');
-            };
-
         },
         /**
         * 获取hidden属性
@@ -5290,133 +5168,3 @@
     };
 })();
 
-
-(function(){
-    window.ZQC_IM = {
-        _checkGroupName: function(groupName){
-            if (!groupName) {
-                IM.HTML_showAlert('alert-error', '请填写群组名称，用来创建群组');
-                return false;
-            } else {// 校验群组名称的合法性
-                var regx1 = /^[\\x00-\\x7F\a-zA-Z\u4e00-\u9fa5_-]{0,10}$/;
-                if (regx1.exec(groupName) == null) {
-                    alert('群组名只允许中英文数字@_-,长度不超过10');
-                    return false;
-                }
-                if (/^g/i.test(groupName)) {
-                    alert('群组名不能以g或G开头');
-                    return false;
-                }
-                if (/@/g.test(groupName)) {
-                    alert('群组名不能含有@符号');
-                    return false;
-                }
-            }
-            return true;
-        },
-
-        /**
-         * 事件，创建群组
-         *
-         * @param groupName
-         * @param permission 1随便加入 2要验证  3私有  4讨论组
-         * @constructor
-         */
-        EV_createGroup: function(groupName, permission, memberSts) {
-            if(!this._checkGroupName(groupName)){
-                return;
-            }
-            var that = this;
-            console.log('create group...groupName[' + groupName + '] permission[' + permission + ']');
-
-            var obj = new RL_YTX.CreateGroupBuilder();
-            obj.setGroupName(groupName);
-            obj.setPermission(permission);
-
-            // 群组说明
-            // obj.setDeclared('');
-            // 群组类型：同学、同事。。
-            // obj.setGroupType(groupType);
-
-            // target参数 1讨论组 2 群组
-            if (permission === 4) {
-                obj.setTarget(1);
-            } else {
-                obj.setTarget(2);
-            }
-
-            RL_YTX.createGroup(obj, function(obj) {
-                var groupId = obj.data;
-                console.log('create group succ... groupId[' + groupId + ']');
-                if (permission === 4) {
-                    // 如果是讨论组，需要在讨论组创建成功之后随即添加账号
-                    // 左侧名称列表
-                    
-                } else {
-                    // 左侧名称列表
-                    IM.HTML_addContactToList(groupId, groupName,
-                    IM._contact_type_g, true, true, false,
-                    IM._user_account, 1, 2);
-                }
-
-                that.EV_inviteGroupMember(groupId, permission, true, groupName, memberSts);
-            }, function(obj) {
-                alert('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
-                return;
-            });
-        },
-        /**
-         * 邀请成员加入群组
-         *
-         * @param groupId
-         * @param permission
-         * @constructor
-         */
-        EV_inviteGroupMember: function(groupId, permission, isowner, groupName, memberSts) {
-            var maxInvite = 50;
-            // 分批邀请
-            var inviteMember = function(memberArr){
-                var number = memberArr.length;
-                var confirm = 1; // 是否需要邀请者确认 可选 1不需要 2需要 默认为2
-                var target = permission === 4 ? 1 : 2;
-                var builder = new RL_YTX.InviteJoinGroupBuilder(groupId, null, memberArr, confirm);
-                RL_YTX.inviteJoinGroup(builder, function() {
-                    if (confirm === 1) {
-                        for (var i =0; i < number; i++) {
-                            IM.HTML_popAddMember(groupId, memberArr[i], memberArr[i], isowner, target);
-                        }
-                    }
-
-                    IM.HTML_addContactToList(groupId, groupName,
-                        IM._contact_type_g, true, true, false,
-                        IM._user_account, 1, 1);
-                }, function(obj) {
-                    console.log('错误码： ' + obj.code + '; 错误描述：' + obj.msg);
-                });
-            }
-            // 剔除不符合邀请用户
-            var resetMember = function(memberArr){
-                var number = memberArr.length;
-                for (var i = 0; i < number; i++) {
-                    if (memberArr[i] === IM._user_account || !IM.DO_checkContact(memberArr[i])) {
-                        memberArr.splice(i, 1);
-                    }
-                }
-                return memberArr;
-            }
-            var memberArr = resetMember(memberSts.split(','));
-            var inviteNum = memberArr.length;
-            // 总批次
-            var queeLen = Math.ceil(inviteNum/maxInvite);
-
-            if(!queeLen){
-                return;
-            }
-
-            for(var i = 0; i < queeLen; i++){
-                var _memberArr = memberArr.slice(i * maxInvite, (i + 1) * maxInvite);
-                inviteMember(_memberArr);
-            }
-        }
-    }
-})()
